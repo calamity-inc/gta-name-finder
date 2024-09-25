@@ -1,0 +1,66 @@
+local function joaat_partial(str, val = 0)
+	for i = 1, #str do
+		val = (val + str:byte(i)) & 0xffffffff
+		val = (val + (val << 10)) & 0xffffffff
+		val = (val ~ (val >> 6)) & 0xffffffff
+	end
+	return val
+end
+
+local function joaat_add(val, b)
+	val = (val + b) & 0xffffffff
+	val = (val + (val << 10)) & 0xffffffff
+	val = (val ~ (val >> 6)) & 0xffffffff
+	return val
+end
+
+local function joaat_finalise(val)
+	val = (val + (val << 3)) & 0xffffffff
+	val = (val ~ (val >> 11)) & 0xffffffff
+	val = (val + (val << 15)) & 0xffffffff
+	return val
+end
+
+local function try_suffix(results, hash_prefix, min_depth, max_depth, ...)
+	min_depth -= 1
+	max_depth -= 1
+	if min_depth <= 0 then
+		for b = 0x61, 0x7A do
+			local partial = joaat_add(hash_prefix, b)
+			local hash = joaat_finalise(partial)
+			if hash < 0x10000 then
+				local t = { ... }
+				t:insert(1, b)
+				t:reverse()
+				local suffix = t:map(string.char):concat()
+				results:insert((document.getElementById("name-prefix").value or "")..$"{suffix} hashes to {string.format("%08x", hash)}\n")
+			end
+		end
+	end
+	if max_depth > 0 and #results < 10 then
+		for b = 0x61, 0x7A do
+			local partial = joaat_add(hash_prefix, b)
+			try_suffix(results, partial, min_depth, max_depth, b, ...)
+		end
+	end
+end
+
+local function calc()
+	local prefix = (document.getElementById("name-prefix").value or ""):lower()
+	local min_chars_to_add = math.max(1, 6 - #prefix)
+	local max_chars_to_add = 16 - #prefix
+	if min_chars_to_add > max_chars_to_add then
+		document.getElementById("output").textContent = "Impossible"
+		return
+	end
+	local results = {}
+	try_suffix(results, joaat_partial(prefix), min_chars_to_add, max_chars_to_add)
+	if #results == 0 then
+		document.getElementById("output").textContent = "No matches found"
+	else
+		results:sort(|a, b| -> #a < #b)
+		document.getElementById("output").textContent = results:concat("")
+	end
+end
+calc()
+document.getElementById("name-prefix"):addEventListener("input", calc)
