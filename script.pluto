@@ -23,10 +23,9 @@ end
 
 local high_hash = false
 
-local function try_suffix(results, hash_prefix, min_depth, max_depth, ...)
-	min_depth -= 1
-	max_depth -= 1
-	if min_depth <= 0 then
+local function try_suffix(results, hash_prefix, depth, ...)
+	depth -= 1
+	if depth == 0 then
 		for b = 0x61, 0x7A do
 			local partial = joaat_add(hash_prefix, b)
 			local hash = joaat_finalise(partial)
@@ -39,10 +38,10 @@ local function try_suffix(results, hash_prefix, min_depth, max_depth, ...)
 			end
 		end
 	end
-	if max_depth > 0 and #results < 10 then
+	if depth > 0 and #results < 10 then
 		for b = 0x61, 0x7A do
 			local partial = joaat_add(hash_prefix, b)
-			try_suffix(results, partial, min_depth, max_depth, b, ...)
+			try_suffix(results, partial, depth, b, ...)
 		end
 	end
 end
@@ -59,7 +58,12 @@ local function calc()
 	high_hash = document.getElementById("high-hash").checked
 
 	local results = {}
-	try_suffix(results, joaat_partial(prefix), min_chars_to_add, max_chars_to_add)
+	for chars_to_add = min_chars_to_add, max_chars_to_add do
+		try_suffix(results, joaat_partial(prefix), chars_to_add)
+		if #results >= 10 then
+			break
+		end
+	end
 	if #results == 0 then
 		document.getElementById("output").textContent = "No matches found"
 	else
