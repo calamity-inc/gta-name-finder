@@ -22,6 +22,13 @@ local function joaat_finalise(val)
 end
 
 local high_hash = false
+local function is_good_hash(hash)
+	return high_hash ? hash >= 0xffff0000 : hash < 0x10000
+end
+
+local function results_add(results, suffix, hash)
+	results:insert((document.getElementById("name-prefix").value or "")..$"{suffix} hashes to {string.format("%08x", hash)}\n")
+end
 
 local function try_suffix(results, hash_prefix, depth, ...)
 	depth -= 1
@@ -29,12 +36,12 @@ local function try_suffix(results, hash_prefix, depth, ...)
 		for b = 0x61, 0x7A do
 			local partial = joaat_add(hash_prefix, b)
 			local hash = joaat_finalise(partial)
-			if high_hash ? hash >= 0xffff0000 : hash < 0x10000 then
+			if is_good_hash(hash) then
 				local t = { ... }
 				t:insert(1, b)
 				t:reverse()
 				local suffix = t:map(string.char):concat()
-				results:insert((document.getElementById("name-prefix").value or "")..$"{suffix} hashes to {string.format("%08x", hash)}\n")
+				results_add(results, suffix, hash)
 			end
 		end
 	end
@@ -57,9 +64,16 @@ local function calc()
 
 	high_hash = document.getElementById("high-hash").checked
 
+	local partial = joaat_partial(prefix)
 	local results = {}
+	if prefix ~= "" then
+		local hash = joaat_finalise(partial)
+		if is_good_hash(hash) then
+			results_add(results, "", hash)
+		end
+	end
 	for chars_to_add = min_chars_to_add, max_chars_to_add do
-		try_suffix(results, joaat_partial(prefix), chars_to_add)
+		try_suffix(results, partial, chars_to_add)
 		if #results >= 10 then
 			break
 		end
