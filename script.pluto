@@ -21,6 +21,8 @@ local function joaat_finalise(val)
 	return val
 end
 
+local high_hash = false
+
 local function try_suffix(results, hash_prefix, min_depth, max_depth, ...)
 	min_depth -= 1
 	max_depth -= 1
@@ -28,7 +30,7 @@ local function try_suffix(results, hash_prefix, min_depth, max_depth, ...)
 		for b = 0x61, 0x7A do
 			local partial = joaat_add(hash_prefix, b)
 			local hash = joaat_finalise(partial)
-			if hash < 0x10000 then
+			if high_hash ? hash >= 0xffff0000 : hash < 0x10000 then
 				local t = { ... }
 				t:insert(1, b)
 				t:reverse()
@@ -53,6 +55,9 @@ local function calc()
 		document.getElementById("output").textContent = "Impossible"
 		return
 	end
+
+	high_hash = document.getElementById("high-hash").checked
+
 	local results = {}
 	try_suffix(results, joaat_partial(prefix), min_chars_to_add, max_chars_to_add)
 	if #results == 0 then
@@ -64,3 +69,4 @@ local function calc()
 end
 calc()
 document.getElementById("name-prefix"):addEventListener("input", calc)
+document.getElementById("high-hash"):addEventListener("change", calc)
